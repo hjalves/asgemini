@@ -1,0 +1,25 @@
+[project]
+name = "asgemini"
+version = "0.1a1"
+authors = [
+    { name = "Humberto Alves", email = "hjalves@live.com" },
+]
+description = "ASGI server for the Gemini protocol"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+]
+
+[project.scripts]
+asgemini = "asgemini.cli:CommandLineInterface.entrypoint"
+
+[project.urls]
+Repository = "https://github.com/hjalves/asgemini"
+
+[tool.black]
+line-length = 90
+
+[tool.setuptools]
+py-modules = ["asgemini"]
