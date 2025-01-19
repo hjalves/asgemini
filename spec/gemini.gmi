@@ -1,0 +1,55 @@
+# Gemini ASGI Message Format
+
+This document describes the ASGI message format for the Gemini protocol. See the ASGI specification for more general information on ASGI.
+
+=> https://asgi.readthedocs.io/en/latest/specs/main.html ASGI Specification
+
+## Gemini Connection Scope
+
+Gemini connections have a single-request connection scope. This means that your application will be called at the start of the request, and will last until the end of that specific request.
+
+If you hold a response open for long-polling or similar, the connection scope will persist until the response closes from either the client or server side.
+
+The connection scope information passed in `scope` contains:
+
+* `type` (*str*) -- `"gemini"`
+* `url` (*str*) -- The full URL of the request (e.g. `gemini://example.com/foo?bar=baz`)
+* `scheme` (*str*) -- The URL scheme (e.g. `gemini`)
+* `netloc` (*str*) -- The network location portion of the URL (e.g. `example.com:1965`)
+* `path` (*str*) -- The path portion of the URL (e.g. `/foo`)
+* `query` (*str*) -- The query string portion of the URL (e.g. `bar=baz`)
+* `root_path` (*str*) -- The root path this application is mounted at
+* `client` (*Iterable[str, int]*) -- The client address and port
+* `server` (*Iterable[str, int]*) -- The server address and port
+
+## Response Start - `send` event
+
+Sent by the application to start sending a response to the client. Needs to be followed by at least one response content message.
+
+Keys:
+
+* `type` (*str*) -- `"gemini.response.start"`
+* `status` (*int*) -- The status code of the response (range 10-69)
+* `header` (*str*) -- The response meta-information (e.g. `text/gemini`)
+
+## Response Body - `send` event
+
+Continues sending a response to the client. Protocol servers must flush any data passed to them into the send buffer before returning from a send call. If more_body is set to False, and the server is not expecting Response Trailers this will complete the response.
+
+Keys:
+
+* `type` (*str*) -- `"gemini.response.body"`
+* `body` (*bytes*) -- The response content
+* `more_body` (*bool*) -- Whether there is more response content to follow. If False, the response is complete.
+
+## Disconnected Client - `send` exception
+
+If the client disconnects before the response is complete, the server should raise a server-specific subclass of `OSError`.
+
+## Disconnect - `receive` event
+
+Sent by the server when the client disconnects.
+
+Keys:
+
+* `type` (*str*) -- `"gemini.disconnect"`
