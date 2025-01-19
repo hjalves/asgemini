@@ -24,6 +24,12 @@ class GeminiProtocol(Protocol):
         self.transport = transport
         self.peername = transport.get_extra_info("peername")
 
+    def connection_lost(self, exc):
+        # Also called when closing the transport with transport.close()
+        if exc:
+            log.error(f"{self.peername[0]}:{self.peername[1]}: {exc}")
+        self.send_disconnect()
+
     def data_received(self, data):
         if len(data) > MAX_REQUEST_SIZE:
             return self.error(59, "Request too large")
@@ -40,21 +46,20 @@ class GeminiProtocol(Protocol):
             self.process_request(url)
 
     def error(self, code: int, msg: str) -> None:
-        log.warning(f"{self.peername[0]}:{self.peername[1]}: {code} {msg}")
-        self.transport.write(f"{code} {msg}\r\n".encode("utf-8"))
+        if not self._response_started:
+            log.warning(f"{self.peername[0]}:{self.peername[1]}: {code} {msg}")
+            self.transport.write(f"{code} {msg}\r\n".encode("utf-8"))
         self.finish()
 
     def finish(self):
         self.transport.close()
         self.transport = None
-        self.send_disconnect()
 
     def send_disconnect(self):
         if self.application_queue:
             self.application_queue.put_nowait({"type": "gemini.disconnect"})
 
     def process_request(self, url):
-        log.debug(f"{self.peername[0]}:{self.peername[1]}: {url.geturl()}")
         self.scope = {
             "type": "gemini",
             "url": url.geturl(),

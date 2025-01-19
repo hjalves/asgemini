@@ -35,15 +35,19 @@ class PrettyFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_logging(verbose: bool = False):
+def setup_logging(verbose: bool = False, color: bool = True):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG if verbose else logging.INFO)
     logging.captureWarnings(True)
 
-    console_handler = logging.StreamHandler(stream=sys.stdout)
-    console_handler.setLevel(logging.DEBUG if verbose else logging.INFO)
-    console_handler.setFormatter(
-        PrettyFormatter(
+    console_formatter = logging.Formatter(
+        "%(asctime)s.%(msecs)03d [%(levelname)1.1s] "
+        "(%(threadName)s) %(name)s: %(message)s "
+        "(%(filename)s:%(lineno)d)",
+        datefmt="%H:%M:%S",
+    )
+    if color:
+        console_formatter = PrettyFormatter(
             fmt=(
                 "%(color)s%(asctime)s.%(msecs)03d %(bold)s[%(levelname)1.1s] "
                 "%(normal)s(%(threadName)s) %(name)s%(reset)s: %(message)s "
@@ -51,5 +55,8 @@ def setup_logging(verbose: bool = False):
             ),
             datefmt="%H:%M:%S",
         )
-    )
+
+    console_handler = logging.StreamHandler(stream=sys.stdout)
+    console_handler.setLevel(logging.DEBUG if verbose else logging.INFO)
+    console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)

@@ -4,17 +4,25 @@ import ssl
 from asyncio import get_running_loop
 from functools import partial
 
-from .logger import setup_logging
 from .protocol import GeminiProtocol
 
 log = logging.getLogger(__name__)
 
 
 class Server:
-    def __init__(self, application, host="127.0.0.1", port=1965):
+    def __init__(
+        self,
+        application,
+        host="127.0.0.1",
+        port=1965,
+        certfile="cert.pem",
+        keyfile="key.pem",
+    ):
         self.application = application
         self.host = host
         self.port = port
+        self.certfile = certfile
+        self.keyfile = keyfile
         self.connections = {}
 
     def protocol_factory(self):
@@ -23,16 +31,14 @@ class Server:
     async def handle(self):
         loop = get_running_loop()
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        log.info("Loading cert.pem and key.pem")
-        context.load_cert_chain("cert.pem", "key.pem")
-        log.info("Starting server on %s:%s", self.host, self.port)
+        log.debug(f"Loading certificate at {self.certfile} and key at {self.keyfile}")
+        context.load_cert_chain(self.certfile, self.keyfile)
         server = await loop.create_server(
             self.protocol_factory, self.host, self.port, ssl=context
         )
         await server.serve_forever()
 
     def run(self):
-        setup_logging(verbose=True)
         event_loop = asyncio.get_event_loop()
         try:
             event_loop.run_until_complete(self.handle())
@@ -41,6 +47,7 @@ class Server:
 
     def create_application(self, protocol, scope):
         input_queue = asyncio.Queue()
+        log.debug(f"Creating application for {protocol}")
         application_instance = self.application(
             scope, receive=input_queue.get, send=protocol.handle_reply
         )
